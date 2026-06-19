@@ -55,7 +55,7 @@ func makeRequest(lb *LoadBalancer, ep *Endpoints) func(w http.ResponseWriter, r 
 		for !isHealthy(ep.List[0].String()) {
 			ep.Shuffle()
 		}
-		
+
 		lb.RevProxy = *httputil.NewSingleHostReverseProxy(ep.List[0])
 		lb.RevProxy.ServeHTTP(w, r)
 		ep.Shuffle()

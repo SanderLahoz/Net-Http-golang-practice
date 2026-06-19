@@ -1,6 +1,7 @@
 package servers
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -42,29 +43,35 @@ func RunServers(amount int) {
 	}
 }
 
-func initializeServer(
-	sl *ServerList,
-	wg *sync.WaitGroup,
-) {
-
+func initializeServer(sl *ServerList, wg *sync.WaitGroup) {
 	defer wg.Done()
 	r := http.NewServeMux()
+
 	port := sl.Pop()
-
-	r.HandleFunc("/",
-		func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
-			_, err := fmt.Fprintf(w, "Server %d", port)
-			if err != nil {
-				log.Fatal(err)
-			}
-		},
-	)
-
 	server := http.Server{
 		Addr:    fmt.Sprintf(":808%d", port),
 		Handler: r,
 	}
+
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, err := fmt.Fprintf(w, "Server %d", port)
+		if err != nil {
+			log.Fatal(err)
+		}
+	})
+
+	r.HandleFunc("/shutdown", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, err := w.Write([]byte("503 - Server shutdown"))
+		if err != nil {
+			return
+		}
+		err2 := server.Shutdown(context.Background())
+		if err2 != nil {
+			return
+		}
+	})
 
 	err := server.ListenAndServe()
 	if err != nil {
