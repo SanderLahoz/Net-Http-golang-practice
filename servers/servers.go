@@ -3,6 +3,8 @@ package servers
 import (
 	"fmt"
 	"log"
+	"net/http"
+	"sync"
 )
 
 type ServerList struct {
@@ -25,13 +27,47 @@ func (s *ServerList) Pop() int {
 	return port
 }
 
-func Test() {
+func RunServers(amount int) {
+	// ServerList Object - creation
 	var myServerList ServerList
+	myServerList.Populate(amount)
 
-	myServerList.Populate(5)
-	limit := len(myServerList.Ports)
+	// Wait group - initialization
+	var wg sync.WaitGroup
+	wg.Add(amount)
+	defer wg.Wait()
 
-	for i := 0; i < limit; i++ {
-		fmt.Println(myServerList.Pop())
+	for i := 0; i < amount; i++ {
+		go initializeServer(&myServerList, &wg)
+	}
+}
+
+func initializeServer(
+	sl *ServerList,
+	wg *sync.WaitGroup,
+) {
+
+	defer wg.Done()
+	r := http.NewServeMux()
+	port := sl.Pop()
+
+	r.HandleFunc("/",
+		func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, err := fmt.Fprintf(w, "Server %d", port)
+			if err != nil {
+				log.Fatal(err)
+			}
+		},
+	)
+
+	server := http.Server{
+		Addr:    fmt.Sprintf(":808%d", port),
+		Handler: r,
+	}
+
+	err := server.ListenAndServe()
+	if err != nil {
+		log.Fatal(err)
 	}
 }

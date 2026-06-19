@@ -5,5 +5,5 @@ import (
 )
 
 func main() {
-	servers.Test()
+	servers.RunServers(5)
 }
