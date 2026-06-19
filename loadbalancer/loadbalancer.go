@@ -52,6 +52,10 @@ func MakeLoadBalancer(amount int) {
 
 func makeRequest(lb *LoadBalancer, ep *Endpoints) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		for !isHealthy(ep.List[0].String()) {
+			ep.Shuffle()
+		}
+		
 		lb.RevProxy = *httputil.NewSingleHostReverseProxy(ep.List[0])
 		lb.RevProxy.ServeHTTP(w, r)
 		ep.Shuffle()
@@ -65,4 +69,15 @@ func createEndpoint(endpoint string, idx int) *url.URL {
 		log.Fatal(err)
 	}
 	return parsedUrl
+}
+
+func isHealthy(endpoint string) bool {
+	resp, err := http.Get(endpoint)
+	if err != nil {
+		return false
+	}
+	if resp.StatusCode != http.StatusOK {
+		return false
+	}
+	return true
 }
