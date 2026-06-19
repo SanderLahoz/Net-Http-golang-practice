@@ -1,5 +1,9 @@
 package main
 
-func main() {
+import (
+	"loadbalancer/servers"
+)
 
+func main() {
+	servers.Test()
 }
